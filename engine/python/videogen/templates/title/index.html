@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>videogen · 标题卡</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<script>
+const SPEC = __SPEC_JSON__;
+
+const W = SPEC.width, H = SPEC.height, DUR = SPEC.duration;
+const ACCENT = SPEC.accent || '#ff4a32';
+const BG = SPEC.bg || '#08080a';
+const SANS = '"Microsoft YaHei", "Noto Sans SC", "PingFang SC", sans-serif';
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const ss = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const eOut = x => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
+const eBack = x => { const c = 1.9; const t = clamp(x, 0, 1) - 1; return 1 + (c + 1) * t * t * t + c * t * t; };
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+const TITLE = SPEC.title || (SPEC.lines[0] ? SPEC.lines[0].text : '');
+const SUBTITLE = SPEC.subtitle || (SPEC.lines[1] ? SPEC.lines[1].text : '');
+const BULLETS = SPEC.subtitle ? SPEC.lines : SPEC.lines.slice(1);
+
+// 标题按字数收字号：4 字以内最大，长标题换行
+function wrapTitle(text, maxChars) {
+  const chars = [...text];
+  const size = maxChars;
+  const rows = [];
+  for (let i = 0; i < chars.length; i += size) rows.push(chars.slice(i, i + size).join(''));
+  return rows.length ? rows : [''];
+}
+const TITLE_ROWS = wrapTitle(TITLE, 6);
+const LONGEST = Math.max(...TITLE_ROWS.map(r => [...r].length), 2);
+// 先按字数给一个字号，再按可用宽度夹住，避免顶到左边的竖条
+const TITLE_FS = Math.min(
+  clamp(0.85 / Math.max(2, TITLE_ROWS.length * 1.05), 0.10, 0.20) * Math.min(W, H),
+  (0.76 * W) / LONGEST,
+);
+
+function draw(c, t) {
+  // 背景：竖向渐变 + 缓慢斜线，最后 1.2s 压暗
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#101014');
+  g.addColorStop(0.55, BG);
+  g.addColorStop(1, '#050506');
+  c.fillStyle = g;
+  c.fillRect(0, 0, W, H);
+
+  c.save();
+  c.globalAlpha = 0.10 + 0.03 * Math.sin(t * 0.9);
+  c.strokeStyle = '#ffffff';
+  c.lineWidth = 1;
+  const step = Math.round(Math.min(W, H) * 0.075);
+  for (let x = -H; x < W + H; x += step) {
+    c.beginPath();
+    c.moveTo(x + (t * 12) % step, 0);
+    c.lineTo(x + (t * 12) % step + H * 0.55, H);
+    c.stroke();
+  }
+  c.restore();
+
+  // 左侧竖条：0.1s 起从下往上长出来
+  const barH = eOut((t - 0.10) / 0.55) * Math.min(W, H) * 0.16;
+  c.fillStyle = ACCENT;
+  c.fillRect(W * 0.085, H * 0.40, Math.max(4, Math.min(W, H) * 0.012), barH);
+
+  // 主标题：0.25s 起弹性放大 + 上浮
+  const k1 = eBack((t - 0.25) / 0.7);
+  if (k1 > 0) {
+    c.save();
+    c.translate(W * 0.5, H * 0.38);
+    c.scale(0.6 + 0.4 * k1, 0.6 + 0.4 * k1);
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillStyle = '#ffffff';
+    c.font = `900 ${TITLE_FS}px ${SANS}`;
+    const lh = TITLE_FS * 1.16;
+    const y0 = -((TITLE_ROWS.length - 1) * lh) / 2;
+    TITLE_ROWS.forEach((row, i) => c.fillText(row, 0, y0 + i * lh));
+    c.restore();
+  }
+
+  // 副标题：0.7s 起淡入上浮
+  const k2 = ss(0.70, 1.25, t);
+  if (k2 > 0 && SUBTITLE) {
+    c.save();
+    c.globalAlpha = k2;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillStyle = 'rgba(255,255,255,.78)';
+    c.font = `500 ${Math.round(TITLE_FS * 0.34)}px ${SANS}`;
+    c.fillText(SUBTITLE, W * 0.5, H * 0.545 + (1 - k2) * 26);
+    c.restore();
+  }
+
+  // 下划红线：0.95s 起从中间往两边拉
+  const k3 = eOut((t - 0.95) / 0.5);
+  if (k3 > 0) {
+    const lw = Math.min(W, H) * 0.22 * k3;
+    c.fillStyle = ACCENT;
+    c.fillRect(W * 0.5 - lw, H * 0.615, lw * 2, Math.max(2, Math.min(W, H) * 0.004));
+  }
+
+  // 逐条小字（与配音同步，每条在自己的 at 出现）
+  let y = H * 0.72;
+  c.textAlign = 'left';
+  c.textBaseline = 'middle';
+  for (const b of BULLETS) {
+    const k = ss(b.at, b.at + 0.35, t);
+    if (k <= 0) continue;
+    c.save();
+    c.globalAlpha = k;
+    c.fillStyle = ACCENT;
+    c.beginPath();
+    c.arc(W * 0.11, y, Math.max(3, Math.min(W, H) * 0.007), 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = 'rgba(255,255,255,.86)';
+    c.font = `500 ${Math.round(Math.min(W, H) * 0.036)}px ${SANS}`;
+    c.fillText(b.text, W * 0.11 + Math.min(W, H) * 0.032, y + (1 - k) * 12);
+    c.restore();
+    y += Math.min(W, H) * 0.075;
+  }
+
+  if (SPEC.footer) {
+    c.textAlign = 'right';
+    c.textBaseline = 'bottom';
+    c.font = `500 ${Math.round(Math.min(W, H) * 0.020)}px ${SANS}`;
+    c.fillStyle = 'rgba(255,255,255,.30)';
+    c.fillText(SPEC.footer, W - Math.min(W, H) * 0.05, H - Math.min(W, H) * 0.035);
+  }
+}
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+cv.width = W; cv.height = H;
+function fit() { const s = Math.min(innerWidth / W, innerHeight / H); cv.style.width = (W * s) + 'px'; cv.style.height = (H * s) + 'px'; }
+function frame(t) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); draw(ctx, clamp(t, 0, DUR)); }
+fit(); addEventListener('resize', fit);
+window.seek = frame; window.DUR = DUR; window.READY = true;
+
+const q = new URLSearchParams(location.search).get('t');
+if (q !== null) frame(parseFloat(q) || 0);
+else { let t0 = null; const loop = now => { if (t0 === null) t0 = now; frame(((now - t0) / 1000) % DUR); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+</script>
+</body>
+</html>

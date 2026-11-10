@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Video workshop">
+  <defs>
+    <linearGradient id="vgBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff7a4d" />
+      <stop offset="1" stop-color="#e0432a" />
+    </linearGradient>
+  </defs>
+  <rect x="6" y="14" width="52" height="42" rx="7" fill="url(#vgBody)" />
+  <path d="M6 22h52" stroke="#2a1109" stroke-opacity="0.35" stroke-width="2" />
+  <g fill="#2a1109" fill-opacity="0.55">
+    <path d="M13 14.5 20 22h-6.2L8.4 16z" />
+    <path d="M24 14.5 31 22h-6.2L19.4 16z" />
+    <path d="M35 14.5 42 22h-6.2L30.4 16z" />
+    <path d="M46 14.5 53 22h-6.2L41.4 16z" />
+  </g>
+  <path d="M27 31.5v13.2l11.4-6.6z" fill="#fff" />
+  <circle cx="52" cy="52" r="7" fill="#fff" />
+  <path d="M49.6 48.6v6.8l5.6-3.4z" fill="#e0432a" />
+</svg>

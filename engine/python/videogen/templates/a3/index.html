@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>videogen · A3 大字冲击</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<script>
+// 由 videogen/render.py 在出片前替换成这一条片子的 spec（JSON）
+const SPEC = __SPEC_JSON__;
+
+const W = SPEC.width, H = SPEC.height, FPS = SPEC.fps || 24;
+const DUR = SPEC.duration;
+const BEAT = SPEC.beat;
+const ACCENT = SPEC.accent || '#ff4a32';
+const BG = SPEC.bg || '#08080a';
+const SANS = '"Microsoft YaHei", "Noto Sans SC", "PingFang SC", sans-serif';
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const toRGB = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const mixHex = (h1, h2, t) => {
+  const a = toRGB(h1), b = toRGB(h2), c = k => Math.round(lerp(a[k], b[k], t));
+  return `rgb(${c(0)},${c(1)},${c(2)})`;
+};
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ---------------- 排布：任意句数都能落得开 ----------------
+// 4 句以内一行一个（大字占满），5 句以上一行两个；字号按字数收敛，位置带种子抖动。
+const WORDS = (() => {
+  const rnd = mulberry32(SPEC.seed || 1);
+  const n = SPEC.lines.length;
+  const perRow = n <= 4 ? 1 : 2;
+  const rows = Math.max(1, Math.ceil(n / perRow));
+  const top = 0.26, bottom = 0.82;
+  const out = [];
+  const m = Math.min(W, H);
+  for (let i = 0; i < n; i++) {
+    const line = SPEC.lines[i];
+    const r = Math.floor(i / perRow), c = i % perRow;
+    const y = rows === 1 ? 0.52 : top + (bottom - top) * (r / (rows - 1));
+    let x;
+    if (perRow === 1) {
+      x = [0.50, 0.34, 0.64, 0.44][r % 4] + (rnd() - 0.5) * 0.06;
+    } else {
+      x = (c === 0 ? 0.27 : 0.72) + (rnd() - 0.5) * 0.04;
+    }
+    const len = [...line.text].length;
+    const base = len <= 1 ? 0.30 : len === 2 ? 0.23 : len === 3 ? 0.165 : 0.125;
+    let fs = base * m * (perRow === 2 ? 0.86 : 1) * (H > W ? 1 : 1.05);
+    // 一行两个字时最容易贴脸：按可用宽度夹一下字号（CJK 近似 1em/字）
+    fs = Math.min(fs, ((perRow === 2 ? 0.40 : 0.84) * W) / Math.max(1, len));
+    const red = line.color ? line.color === 'red'
+      : (/[!！?？]$/.test(line.text) || (i % 4 === 3));
+    out.push({ text: line.text, at: line.at, x, y, fs, red });
+  }
+  return out;
+})();
+
+function draw(c, t) {
+  const hitIdx = WORDS.findIndex((w, i) => t >= w.at && (i === WORDS.length - 1 || t < WORDS[i + 1].at));
+  const k = hitIdx < 0 ? -1 : hitIdx;
+  const age = k >= 0 ? t - WORDS[k].at : 99;
+  const hit = k >= 0 ? Math.exp(-age * 9) : 0;
+
+  c.fillStyle = mixHex(BG, '#2a2a2e', hit * 0.5);
+  c.fillRect(0, 0, W, H);
+
+  const sx = Math.sin(t * 91) * 6 * hit, sy = Math.cos(t * 77) * 6 * hit;
+  c.save();
+  c.translate(sx, sy);
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  for (let i = 0; i <= k; i++) {
+    const w = WORDS[i], newest = i === k;
+    const sc = newest ? 1 + 0.9 * Math.exp(-age * 16) : 1;
+    c.font = `900 ${w.fs * sc}px ${SANS}`;
+    c.fillStyle = w.red ? (newest ? ACCENT : '#a3392a') : (newest ? '#ffffff' : '#55565c');
+    c.fillText(w.text, w.x * W, w.y * H);
+  }
+  c.restore();
+
+  // 右下角水印（AI 生成内容标识）
+  if (SPEC.footer) {
+    c.textAlign = 'right';
+    c.textBaseline = 'bottom';
+    c.font = `500 ${Math.round(Math.min(W, H) * 0.020)}px ${SANS}`;
+    c.fillStyle = 'rgba(255,255,255,.30)';
+    c.fillText(SPEC.footer, W - Math.min(W, H) * 0.05, H - Math.min(W, H) * 0.035);
+  }
+}
+
+// ---------------- 播放器 ----------------
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+cv.width = W; cv.height = H;
+function fit() {
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  cv.style.width = (W * s) + 'px';
+  cv.style.height = (H * s) + 'px';
+}
+function frame(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  draw(ctx, clamp(t, 0, DUR));
+}
+fit(); addEventListener('resize', fit);
+window.seek = frame;      // CDP 渲染器逐帧调它，必须是时间纯函数
+window.DUR = DUR;
+window.READY = true;
+
+const q = new URLSearchParams(location.search).get('t');
+if (q !== null) {
+  frame(parseFloat(q) || 0);
+} else {
+  let t0 = null;
+  const loop = now => { if (t0 === null) t0 = now; frame(((now - t0) / 1000) % DUR); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>videogen · 竖排金句</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<script>
+const SPEC = __SPEC_JSON__;
+
+const W = SPEC.width, H = SPEC.height, DUR = SPEC.duration;
+const ACCENT = SPEC.accent || '#ff4a32';
+const BG = SPEC.bg || '#08080a';
+const SANS = '"Microsoft YaHei", "Noto Sans SC", "PingFang SC", sans-serif';
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const ss = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const eOut = x => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+const TEXT = SPEC.title || SPEC.lines.map(l => l.text).join('');
+const CHARS = [...TEXT];
+const PER_COL = 7;
+const FS = Math.min(W, H) * 0.088;
+const COL_GAP = FS * 1.55;
+const ROW_GAP = FS * 1.14;
+const COLS = [];
+for (let i = 0; i < CHARS.length; i += PER_COL) COLS.push(CHARS.slice(i, i + PER_COL));
+const TOP = H * 0.16;
+// 列数少的时候整体居中，不要贴着右边缘
+const RIGHT = W * 0.5 + ((COLS.length - 1) * COL_GAP) / 2;
+
+function draw(c, t) {
+  // 背景：中心亮、四周暗的纸感径向渐变 + 细噪点（种子固定）
+  const g = c.createRadialGradient(W * 0.5, H * 0.42, Math.min(W, H) * 0.05, W * 0.5, H * 0.5, Math.max(W, H) * 0.72);
+  g.addColorStop(0, '#15151a');
+  g.addColorStop(0.55, BG);
+  g.addColorStop(1, '#050506');
+  c.fillStyle = g;
+  c.fillRect(0, 0, W, H);
+
+  const rnd = mulberry32((SPEC.seed || 1) * 31 + 7);
+  c.save();
+  for (let i = 0; i < 900; i++) {
+    const x = rnd() * W, y = rnd() * H, a = 0.015 + rnd() * 0.035;
+    c.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+    c.fillRect(x, y, 1.4, 1.4);
+  }
+  c.restore();
+
+  // 淡竖线，给画面一点版式感
+  c.save();
+  c.strokeStyle = 'rgba(255,255,255,.05)';
+  c.lineWidth = 1;
+  for (let i = 0; i < COLS.length; i++) {
+    const x = RIGHT - i * COL_GAP;
+    c.beginPath();
+    c.moveTo(x + FS * 0.5, TOP - FS * 0.2);
+    c.lineTo(x + FS * 0.5, TOP + ROW_GAP * PER_COL);
+    c.stroke();
+  }
+  c.restore();
+
+  // 逐字淡入：第 i 个字在 0.9 + i*0.085 出现（配音按同一节奏摆）
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  let idx = 0;
+  const fadeStep = Math.max(0.055, (DUR - 2.2) / Math.max(1, CHARS.length));
+  for (let ci = 0; ci < COLS.length; ci++) {
+    const x = RIGHT - ci * COL_GAP;
+    for (let ri = 0; ri < COLS[ci].length; ri++) {
+      const ch = COLS[ci][ri];
+      const at = 0.9 + idx * fadeStep;
+      const k = ss(at, at + 0.30, t);
+      if (k > 0) {
+        c.save();
+        c.globalAlpha = k;
+        c.fillStyle = '#f2efe9';
+        c.font = `500 ${FS}px ${SANS}`;
+        c.fillText(ch, x, TOP + ri * ROW_GAP + (1 - k) * 10);
+        c.restore();
+      }
+      idx++;
+    }
+  }
+
+  // 印章：60% 时长处弹出来
+  const sealAt = Math.max(1.2, DUR * 0.58);
+  const ks = eOut((t - sealAt) / 0.45);
+  if (ks > 0) {
+    const s = Math.min(W, H) * 0.115 * (0.7 + 0.3 * ks);
+    const x = W * 0.14, y = H * 0.80;
+    c.save();
+    c.globalAlpha = clamp(ks * 1.4, 0, 1) * 0.92;
+    c.fillStyle = ACCENT;
+    c.fillRect(x - s / 2, y - s / 2, s, s);
+    c.fillStyle = '#ffffff';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.font = `700 ${Math.round(s * 0.34)}px ${SANS}`;
+    c.fillText('AI', x, y - s * 0.10);
+    c.fillText('生成', x, y + s * 0.24);
+    c.restore();
+  }
+
+  if (SPEC.subtitle) {
+    const k = ss(sealAt, sealAt + 0.5, t);
+    if (k > 0) {
+      c.save();
+      c.globalAlpha = k * 0.75;
+      c.textAlign = 'left';
+      c.textBaseline = 'bottom';
+      c.fillStyle = '#ffffff';
+      c.font = `500 ${Math.round(Math.min(W, H) * 0.032)}px ${SANS}`;
+      c.fillText(SPEC.subtitle, W * 0.085, H * 0.94);
+      c.restore();
+    }
+  }
+
+  if (SPEC.footer) {
+    c.textAlign = 'right';
+    c.textBaseline = 'bottom';
+    c.font = `500 ${Math.round(Math.min(W, H) * 0.020)}px ${SANS}`;
+    c.fillStyle = 'rgba(255,255,255,.28)';
+    c.fillText(SPEC.footer, W - Math.min(W, H) * 0.05, H - Math.min(W, H) * 0.035);
+  }
+}
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+cv.width = W; cv.height = H;
+function fit() { const s = Math.min(innerWidth / W, innerHeight / H); cv.style.width = (W * s) + 'px'; cv.style.height = (H * s) + 'px'; }
+function frame(t) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); draw(ctx, clamp(t, 0, DUR)); }
+fit(); addEventListener('resize', fit);
+window.seek = frame; window.DUR = DUR; window.READY = true;
+
+const q = new URLSearchParams(location.search).get('t');
+if (q !== null) frame(parseFloat(q) || 0);
+else { let t0 = null; const loop = now => { if (t0 === null) t0 = now; frame(((now - t0) / 1000) % DUR); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+</script>
+</body>
+</html>

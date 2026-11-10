@@ -1,0 +1,67 @@
+{
+  "name": "dsh-ai-video",
+  "version": "0.1.0",
+  "description": "AI 速成视频 — 一句话出片：提示词风格短片 / AI 自拟长片，逐帧渲染 + 配音 + 配乐 + 音效，直接长在 DSH 会话视图里。",
+  "type": "module",
+  "main": "index.js",
+  "icon": "icon.svg",
+  "license": "MIT",
+  "author": "AI 速成视频 contributors",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "video",
+    "text-to-video",
+    "ffmpeg",
+    "edge-tts",
+    "canvas"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ],
+  "files": [
+    "index.js",
+    "client.js",
+    "icon.svg",
+    "cordis.patch.yml",
+    "locale",
+    "assets",
+    "engine",
+    "docs",
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "NOTICE.md",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "scripts": {
+    "check": "node --check index.js && node --check client.js",
+    "check:py": "python -m compileall -q engine/python",
+    "doctor": "python engine/python/tools/dump_catalog.py --force"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}

@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>explain</title>
+<style>
+  html,body{margin:0;background:#05070b;overflow:hidden}
+  #cv{display:block}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<script>
+'use strict';
+const SPEC = __SPEC_JSON__;
+const W = SPEC.width, H = SPEC.height;
+const ACCENT = SPEC.accent || '#ff4a32';
+const BG = SPEC.bg || '#05070b';
+const SANS = '"Microsoft YaHei","PingFang SC","Noto Sans SC","Source Han Sans SC","Segoe UI",sans-serif';
+const MONO = '"Cascadia Mono","Consolas","SFMono-Regular",monospace';
+
+const cv = document.getElementById('cv');
+cv.width = W; cv.height = H;
+const ctx = cv.getContext('2d');
+
+/* ---------------- 基础工具 ---------------- */
+const clamp = (v,a,b)=>Math.min(b,Math.max(a,v));
+const easeOut = t=>1-Math.pow(1-clamp(t,0,1),3);
+const easeOutBack = t=>{t=clamp(t,0,1);const c=1.9;return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2);};
+function rgba(hex, a){
+  const h = String(hex).replace('#','');
+  const n = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+  const r = parseInt(n.slice(0,2),16), g = parseInt(n.slice(2,4),16), b = parseInt(n.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function roundRect(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y);
+  c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r);
+  c.arcTo(x,y,x+w,y,r);
+  c.closePath();
+}
+/* 按像素宽度折行（中文按字切，英文按词切）——只在初始化时调用一次；\n 强制断行 */
+function wrap(text, font, maxW, maxLines){
+  ctx.font = font;
+  const out = [];
+  const paras = String(text).split('\n');
+  for (const para of paras){
+    let line = '';
+    const tokens = para.match(/[A-Za-z0-9_.\-\/%]+|\s+|[^\s]/g) || [];
+    for (const tk of tokens){
+      const test = line + tk;
+      if (ctx.measureText(test).width > maxW && line.trim()){
+        out.push(line.trim());
+        line = tk.trim();
+        if (out.length >= maxLines) return out;
+      } else { line = test; }
+    }
+    if (line.trim() && out.length < maxLines) out.push(line.trim());
+  }
+  return out.slice(0, maxLines);
+}
+function spaced(c, text, x, y, gap){
+  let cx = x;
+  for (const ch of text){ c.fillText(ch, cx, y); cx += c.measureText(ch).width + gap; }
+  return cx;
+}
+
+/* ---------------- 场景表 ---------------- */
+const SCENES = (SPEC.lines||[]).map((ln,i,arr)=>{
+  const next = arr[i+1];
+  const dur = ln.dur || (next ? (next.at - ln.at) : (SPEC.duration - ln.at));
+  return Object.assign({}, ln, {i, dur: Math.max(0.2, dur)});
+});
+const N = SCENES.length;
+/* ---- 版面几何：按短边缩放，竖屏/横屏/方形都能用，也支持 720p ---- */
+const S = Math.min(W, H) / 1080;
+const PAD = Math.round(84 * S);
+const TITLE_TOP = Math.round(H * 0.208);
+const CHIP_FS = Math.round(30 * S);
+const SUB_FS = Math.round(37 * S);
+const SUB_LH = Math.round(SUB_FS * 1.46);
+const SUB_FONT = `500 ${SUB_FS}px ${SANS}`;
+const LABEL_FONT = `600 ${Math.round(24 * S)}px ${SANS}`;
+const LABEL_H = Math.round(54 * S);
+
+function fitTitle(text){
+  // 标题放不下就缩字号；如果最后一行只剩 1 个字（孤儿），也再缩一档重排
+  let fs = Math.round(86 * S);
+  let lines = wrap(text, `800 ${fs}px ${SANS}`, W - PAD * 2, 3);
+  for (let i = 0; i < 3; i++){
+    const orphan = lines.length > 1 && [...(lines[lines.length-1] || '')].length <= 1;
+    if (!orphan) break;
+    fs = Math.round(fs * 0.9);
+    lines = wrap(text, `800 ${fs}px ${SANS}`, W - PAD * 2, 3);
+  }
+  return { fs, lines, lh: Math.round(fs * 1.16) };
+}
+
+/* 版式只在初始化算一次：逐帧 measureText 是性能杀手 */
+SCENES.forEach(sc=>{
+  const t = fitTitle(sc.text || '');
+  const L = { title: t.lines, titleFs: t.fs, titleLh: t.lh };
+  let y = TITLE_TOP + L.title.length * L.titleLh;
+  if (sc.kind === 'chain' && sc.sub){
+    ctx.font = `600 ${CHIP_FS}px ${SANS}`;
+    const items = sc.sub.split('>').map(s=>s.trim()).filter(Boolean);
+    const chipH = Math.round(74 * S), gap = Math.round(34 * S);
+    let x = PAD, row = 0;
+    L.chain = items.map(it=>{
+      const tw = ctx.measureText(it).width;
+      const pw = tw + Math.round(46 * S);
+      if (x + pw > W - PAD && x > PAD){ x = PAD; row++; }
+      const chip = {text: it, x, y: y + Math.round(22*S) + row * Math.round(108*S), w: pw, h: chipH};
+      x += pw + gap;
+      return chip;
+    });
+    L.chainRows = row + 1;
+  } else if (sc.sub){
+    L.sub = wrap(sc.sub, SUB_FONT, W - PAD * 2, 3);
+  }
+
+  /* 文字块的底边 */
+  let bottom = y;
+  if (L.chain) bottom = y + Math.round(22*S) + L.chainRows * Math.round(108*S);
+  else if (L.sub) bottom = y + Math.round(22*S) + L.sub.length * SUB_LH;
+  L.bottom = bottom;
+
+  /* 表情包：放在文字下方，放不下就缩小，保证不压字 */
+  const floorY = H - Math.round(H * 0.075);
+  const room = floorY - (bottom + Math.round(H * 0.022));
+  const base = Math.round(Math.min(W, H) * 0.34);
+  const st = Math.max(Math.round(Math.min(W, H) * 0.11), Math.min(base, room));
+  L.st = st;
+  L.cx = W - PAD - Math.round(st / 2);
+  L.cy = Math.min(bottom + Math.round(H * 0.022) + st / 2, floorY - st / 2);
+  sc.layout = L;
+});
+
+/* ---------------- 静态背景（画一次，之后整帧贴图） ---------------- */
+const bgCanvas = document.createElement('canvas');
+bgCanvas.width = W; bgCanvas.height = H;
+(function paintBg(){
+  const c = bgCanvas.getContext('2d');
+  c.fillStyle = BG; c.fillRect(0,0,W,H);
+
+  const g = c.createRadialGradient(W*0.78, H*0.10, 40, W*0.78, H*0.10, W*0.95);
+  g.addColorStop(0, rgba(ACCENT, 0.16));
+  g.addColorStop(0.45, rgba(ACCENT, 0.04));
+  g.addColorStop(1, rgba(ACCENT, 0));
+  c.fillStyle = g; c.fillRect(0,0,W,H);
+
+  c.fillStyle = 'rgba(255,255,255,0.055)';
+  for (let x=60; x<W; x+=52){
+    for (let y=60; y<H; y+=52){ c.fillRect(x,y,1.6,1.6); }
+  }
+
+  const gb = c.createLinearGradient(0, H*0.84, 0, H);
+  gb.addColorStop(0, 'rgba(5,7,11,0)');
+  gb.addColorStop(1, 'rgba(5,7,11,0.9)');
+  c.fillStyle = gb; c.fillRect(0, H*0.84, W, H*0.16);
+
+  // 页眉（静态部分）
+  c.save();
+  c.textBaseline = 'middle';
+  c.fillStyle = rgba(ACCENT, 0.95);
+  c.beginPath(); c.arc(84, 104, 5, 0, Math.PI*2); c.fill();
+  c.font = `600 ${Math.round(21*S)}px ${MONO}`;
+  c.fillStyle = 'rgba(255,255,255,0.72)';
+  const end = spaced(c, 'DEEPSEEK-CHAT', 100, 104, 3.2);
+  c.font = `500 ${Math.round(20*S)}px ${SANS}`;
+  c.fillStyle = 'rgba(255,255,255,0.34)';
+  c.fillText('工作区导览', end + 18, 104);
+  c.restore();
+
+  // 底部进度条轨道
+  c.fillStyle = 'rgba(255,255,255,0.09)';
+  roundRect(c, 84, H-150, W-168, 5, 3); c.fill();
+})();
+
+/* ---------------- 图片预载 ---------------- */
+const IMGS = {};
+let pending = 0, loaded = 0;
+SCENES.forEach((sc, si)=>{
+  if (!sc.frames || !sc.frames.length) return;
+  const list = [];
+  sc.frames.forEach(src=>{
+    pending++;
+    const im = new Image();
+    im.onload = ()=>{ loaded++; maybeReady(); };
+    im.onerror = ()=>{ loaded++; maybeReady(); };
+    im.src = src;
+    list.push(im);
+  });
+  IMGS[si] = list;
+});
+
+/* ---------------- 绘制 ---------------- */
+function sceneIndex(t){
+  let idx = 0;
+  for (let i=0;i<N;i++){ if (t >= SCENES[i].at - 1e-6) idx = i; }
+  return idx;
+}
+
+function drawHeaderCounter(sc){
+  const cur = String(sc.i+1).padStart(2,'0');
+  const all = ' / ' + String(N).padStart(2,'0');
+  ctx.save();
+  ctx.textBaseline = 'middle';
+  ctx.font = `600 ${Math.round(21*S)}px ${MONO}`;
+  const wAll = ctx.measureText(all).width;
+  const wCur = ctx.measureText(cur).width;
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.fillText(all, W-84-wAll, 104);
+  ctx.fillStyle = rgba(ACCENT, 0.95);
+  ctx.fillText(cur, W-84-wAll-wCur, 104);
+  ctx.restore();
+}
+
+function drawScene(sc, t){
+  const local = t - sc.at;
+  const L = sc.layout;
+
+  ctx.save();
+
+  /* --- 标签 pill --- */
+  if (sc.label){
+    const a = clamp((local - 0.02) / 0.4, 0, 1);
+    if (a > 0.001){
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.font = LABEL_FONT;
+      const tw = ctx.measureText(sc.label).width;
+      const pw = tw + Math.round(56 * S), ph = LABEL_H;
+      const px = PAD, py = Math.round(H * 0.111) + (1-easeOut(a))*18;
+      ctx.fillStyle = rgba(ACCENT, 0.10);
+      roundRect(ctx, px, py, pw, ph, ph/2); ctx.fill();
+      ctx.strokeStyle = rgba(ACCENT, 0.55); ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = rgba(ACCENT, 0.98);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(sc.label, px + Math.round(28*S), py + ph/2 + 1);
+      ctx.restore();
+    }
+  }
+
+  /* --- 标题 --- */
+  ctx.font = `800 ${L.titleFs}px ${SANS}`;
+  ctx.textBaseline = 'top';
+  let y = TITLE_TOP;
+  const lastIdx = L.title.length - 1;
+  L.title.forEach((ln, li)=>{
+    const a = clamp((local - 0.06 - li*0.07) / 0.5, 0, 1);
+    if (a > 0.001){
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = (li === lastIdx && sc.color)
+        ? (String(sc.color).startsWith('#') ? sc.color : ACCENT)
+        : '#ffffff';
+      ctx.fillText(ln, PAD, y + (1-easeOut(a))*30);
+      ctx.restore();
+    }
+    y += L.titleLh;
+  });
+
+  /* --- 副标题 / 流程链 --- */
+  if (L.chain){
+    const chipY = y + Math.round(22*S);
+    ctx.font = `600 ${CHIP_FS}px ${SANS}`;
+    ctx.textBaseline = 'middle';
+    L.chain.forEach((ch, i)=>{
+      const a = clamp((local - 0.24 - i*0.10) / 0.45, 0, 1);
+      if (a <= 0.001) return;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      roundRect(ctx, ch.x, chipY + (ch.y - (y+22*S)), ch.w, ch.h, 20); ctx.fill();
+      ctx.strokeStyle = rgba(ACCENT, 0.45); ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillText(ch.text, ch.x + Math.round(23*S), chipY + (ch.y - (y+22*S)) + ch.h/2 + 1);
+      ctx.restore();
+    });
+    // 箭头
+    ctx.save();
+    ctx.fillStyle = rgba(ACCENT, 0.9);
+    ctx.font = `700 ${Math.round(28*S)}px ${SANS}`;
+    ctx.textBaseline = 'middle';
+    L.chain.forEach((ch, i)=>{
+      if (i === L.chain.length-1) return;
+      const a = clamp((local - 0.24 - i*0.10) / 0.45, 0, 1);
+      ctx.globalAlpha = a * 0.8;
+      ctx.fillText('›', ch.x + ch.w + Math.round(12*S), chipY + (ch.y - (y+22*S)) + ch.h/2);
+    });
+    ctx.restore();
+    y += Math.round(22*S) + L.chainRows * Math.round(108*S);
+  } else if (L.sub){
+    ctx.font = SUB_FONT;
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(255,255,255,0.62)';
+    L.sub.forEach((ln, li)=>{
+      const a = clamp((local - 0.30 - li*0.06) / 0.5, 0, 1);
+      if (a > 0.001){
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.fillText(ln, PAD + Math.round(2*S), y + Math.round(22*S) + li*SUB_LH + (1-easeOut(a))*14);
+        ctx.restore();
+      }
+    });
+    y += Math.round(22*S) + L.sub.length * SUB_LH;
+  }
+
+  /* --- 短横线 --- */
+  const la = clamp((local - 0.45) / 0.6, 0, 1);
+  if (la > 0.001){
+    ctx.save();
+    ctx.globalAlpha = la * 0.9;
+    ctx.fillStyle = rgba(ACCENT, 0.85);
+    ctx.fillRect(PAD, y + Math.round(40*S), Math.round(64*S) * la, Math.max(2, Math.round(3*S)));
+    ctx.restore();
+  }
+
+  /* --- 表情包 --- */
+  const imgs = IMGS[sc.i];
+  if (imgs && imgs.length){
+    const pop = easeOutBack(clamp((local - 0.16) / 0.55, 0, 1));
+    const bob = Math.sin(t * 1.7) * 8;
+    const size = L.st;
+    const cx = L.cx, cy = L.cy + bob;
+    ctx.save();
+    ctx.globalAlpha = clamp((local - 0.16) / 0.35, 0, 1);
+
+    const gl = ctx.createRadialGradient(cx, cy, 10, cx, cy, size*0.95);
+    gl.addColorStop(0, rgba(ACCENT, 0.22));
+    gl.addColorStop(1, rgba(ACCENT, 0));
+    ctx.fillStyle = gl;
+    ctx.beginPath(); ctx.arc(cx, cy, size*0.95, 0, Math.PI*2); ctx.fill();
+
+    const s = 0.86 + 0.14*pop;
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.045 + Math.sin(t*0.9)*0.012);
+    ctx.scale(s, s);
+    ctx.fillStyle = 'rgba(255,255,255,0.045)';
+    roundRect(ctx, -size/2-18, -size/2-18, size+36, size+36, 40); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    const fi = Math.floor(local * 10) % imgs.length;
+    const im = imgs[fi];
+    if (im && im.complete && im.naturalWidth){
+      // 贴纸帧是 300×300 方图，裁成圆角再画，免得方角压在卡片上
+      ctx.save();
+      ctx.beginPath();
+      roundRect(ctx, -size/2, -size/2, size, size, 26);
+      ctx.clip();
+      ctx.drawImage(im, -size/2, -size/2, size, size);
+      ctx.restore();
+    }
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.globalAlpha = 0.10;
+    ctx.strokeStyle = ACCENT; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(W*0.72, H*0.70, Math.round(190*S), 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(W*0.72, H*0.70, Math.round(128*S), 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawProgress(t, sc){
+  const x0 = PAD, x1 = W-PAD, y = H - Math.round(150*S);
+  const p = clamp(t / Math.max(0.01, SPEC.duration), 0, 1);
+  const g = ctx.createLinearGradient(x0, 0, x1, 0);
+  g.addColorStop(0, rgba(ACCENT, 0.55));
+  g.addColorStop(1, rgba(ACCENT, 1));
+  ctx.fillStyle = g;
+  roundRect(ctx, x0, y, Math.max(6, (x1-x0)*p), 5, 3); ctx.fill();
+
+  for (const it of SCENES){
+    const px = x0 + (x1-x0) * (it.at / Math.max(0.01, SPEC.duration));
+    ctx.fillStyle = t >= it.at ? rgba(ACCENT, 0.9) : 'rgba(255,255,255,0.16)';
+    ctx.beginPath(); ctx.arc(px, y+2.5, 2.6, 0, Math.PI*2); ctx.fill();
+  }
+
+  ctx.save();
+  ctx.font = `500 ${Math.round(19*S)}px ${SANS}`;
+  ctx.fillStyle = 'rgba(255,255,255,0.30)';
+  ctx.textBaseline = 'top';
+  ctx.fillText(SPEC.footer || '', x0, y + 26);
+  ctx.textAlign = 'right';
+  ctx.font = `500 ${Math.round(19*S)}px ${MONO}`;
+  ctx.fillStyle = 'rgba(255,255,255,0.26)';
+  ctx.fillText(t.toFixed(1) + 's / ' + SPEC.duration.toFixed(0) + 's', x1, y + 26);
+  ctx.restore();
+
+  // 背景大序号
+  ctx.save();
+  ctx.font = `800 ${Math.round(300*S)}px ${SANS}`;
+  ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(255,255,255,0.035)';
+  ctx.fillText(String(sc.i+1).padStart(2,'0'), W-Math.round(58*S), H*0.30);
+  ctx.restore();
+}
+
+function draw(t){
+  t = clamp(t, 0, SPEC.duration);
+  const sc = SCENES[sceneIndex(t)] || SCENES[0];
+  ctx.drawImage(bgCanvas, 0, 0);
+  drawProgress(t, sc);
+  if (sc) drawScene(sc, t);
+  drawHeaderCounter(sc);
+}
+
+/* ---------------- 启动 ---------------- */
+let started = false;
+function maybeReady(){
+  if (started || loaded < pending) return;
+  started = true;
+  window.DUR = SPEC.duration;
+  window.seek = (t)=>draw(t);
+  const q = new URLSearchParams(location.search);
+  const at = q.get('t');
+  if (at !== null){ draw(parseFloat(at)); return; }
+  const t0 = performance.now();
+  const loop = ()=>{
+    draw(((performance.now() - t0) / 1000) % SPEC.duration);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+maybeReady();
+</script>
+</body>
+</html>

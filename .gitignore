@@ -1,0 +1,28 @@
+# 依赖与产物
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 运行产物
+out/
+work/
+*.db
+*.db-wal
+*.db-shm
+*.mp4
+*.mp3
+*.wav
+
+# 配置与密钥
+config.json
+.env
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: JS syntax
+        run: |
+          node --check index.js
+          node --check client.js
+          node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Python syntax
+        run: python -m compileall -q engine/python
+
+      - name: Package layout
+        run: |
+          test -f cordis.patch.yml
+          test -f index.js
+          test -f client.js
+          test -f icon.svg
+          test -f locale/zh.json
+          test -f locale/en.json
+          test -f engine/python/videogen/__init__.py
+          test -f engine/python/tools/build_job.py
+          test -f engine/python/tools/render-cdp.ps1 || test -f engine/python/videogen/tools/render-cdp.ps1
+          test "$(ls assets/styles/*.md | wc -l)" -ge 1
+          echo "layout ok"
