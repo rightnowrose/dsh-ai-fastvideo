@@ -60,6 +60,21 @@ cd dsh-ai-video
 
 > 想手动验证装没装上：`plugin_manager` 里应能看到 `dsh-ai-video`；会话视图页签里 `AI 速成视频` 在后面。
 
+## 发布到 GitHub
+
+仓库本身就是按可发布状态整理的（MIT 许可、CI、NOTICE、示例风格都在版本控制里）。首次推送：
+
+```bash
+cd dsh-ai-video
+git remote add origin https://github.com/<你的账号>/dsh-ai-video.git
+git push -u origin main
+```
+
+- 推送前跑一遍 `npm run check && npm run check:py && npm run doctor`（CI 里也是这三步）。
+- `assets/styles` 里的 26 条示例风格是随包内容，别漏提交；自己的风格库、表情包、BGM、自训练音色不要进仓库（见 `NOTICE.md`）。
+- 想换名字：改 `package.json` 的 `name`、`cordis.patch.yml` 的 `id`/`name`、`locale/*.json` 的标题三处即可。
+- 只给 DSH 用的话不必发 npm；`install_bundle` 直接吃本地目录或 `git clone` 下来的路径。要发 npm 再 `npm publish --access public`。
+
 ## 配置
 
 首次运行会自动建数据目录：
