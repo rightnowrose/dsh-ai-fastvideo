@@ -7,7 +7,7 @@
 
 | 目录 | 数量 | 来源 | 许可 |
 |---|---|---|---|
-| `A-G_代码样片/`、`R_照参考学来的/`、`M_动态风格/`、`K_卡通画风/`、`Z_中国风/`、`H_现成版式/`、`O_奥斯卡98部/` | 236 | 「代码动画」作者整理（含中文改写与参考实现） | 作者约定：免费使用、转发也请免费分享，禁止包装成课程 / 付费 skills / 收费产品出售 |
+| `A-G_代码样片/`、`R_照参考学来的/`、`M_动态风格/`、`K_卡通画风/`、`Z_中国风/`、`H_现成版式/`、`O_奥斯卡98部/` | 236 | 「代码动画」哔哩哔哩 俯仰观照 整理（含中文改写与参考实现） | 哔哩哔哩 俯仰观照 约定：免费使用、转发也请免费分享，禁止包装成课程 / 付费 skills / 收费产品出售 |
 | `L_Lemo-Opuscar/` | 59 | [lemomo-ai/lemo-opuscar](https://github.com/lemomo-ai/lemo-opuscar) | MIT，Copyright (c) 2026 LemoLab |
 | `V_mg-styles-15/` | 15 | mg-styles-15（Vincentwei1021） | MIT，Copyright (c) 2026 Vincentwei1021 |
 | `X_code-video/` | 31 | code-video（Bae-ChangHyun） | MIT，Copyright (c) 2026 Bae-ChangHyun |

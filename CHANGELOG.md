@@ -16,7 +16,7 @@
 
 - 包名改为 `dsh-ai-fastvideo`（显示名仍是「AI 速成视频」）；数据目录随之改为 `~/.dsh/data/dsh-ai-fastvideo`。
 - **风格库改成随包全量分发**：`assets/styles/` 从 26 条扩到 **341 条**（10 类，341 个 `.md` + 341 张 `.jpg`，约 17.8MB）。
-- 新增 `assets/styles/SOURCES.md`：逐类标注来源与许可（作者整理 236 条 / Lemo-Opuscar 59 / mg-styles-15 15 / code-video 31），
+- 新增 `assets/styles/SOURCES.md`：逐类标注来源与许可（哔哩哔哩 俯仰观照 整理 236 条 / Lemo-Opuscar 59 / mg-styles-15 15 / code-video 31），
   第三方 MIT 许可原文放 `assets/licenses/`；`NOTICE.md` 同步重写。
 - README 精简重写（252 行 → 约 130 行），删掉重复的引擎 README（`docs/engine-README.md`），
   只保留 `docs/design.md`（设计细节）与 `docs/publishing.md`（发布/分发）。
