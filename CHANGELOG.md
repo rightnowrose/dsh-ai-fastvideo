@@ -2,6 +2,22 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号用语义化。
 
+## [0.3.0] - 2026-11-11
+
+### 变更
+
+- 包名改为 `dsh-ai-fastvideo`（显示名仍是「AI 速成视频」）；数据目录随之改为 `~/.dsh/data/dsh-ai-fastvideo`。
+- **风格库改成随包全量分发**：`assets/styles/` 从 26 条扩到 **341 条**（10 类，341 个 `.md` + 341 张 `.jpg`，约 17.8MB）。
+- 新增 `assets/styles/SOURCES.md`：逐类标注来源与许可（作者整理 236 条 / Lemo-Opuscar 59 / mg-styles-15 15 / code-video 31），
+  第三方 MIT 许可原文放 `assets/licenses/`；`NOTICE.md` 同步重写。
+- README 精简重写（252 行 → 约 130 行），删掉重复的引擎 README（`docs/engine-README.md`），
+  只保留 `docs/design.md`（设计细节）与 `docs/publishing.md`（发布/分发）。
+- 默认使用包内风格库：`config.json` 不再需要写 `styleDir`（写了则覆盖）。
+
+### 修复
+
+- 迁移数据目录时 `config.json` 里的 `styleDir` 会指向旧路径，已默认移除。
+
 ## [0.2.0] - 2026-11-11
 
 ### 新增
@@ -51,14 +67,13 @@
 
 ### 已知限制
 
-- 0.1 只在 **Windows** 上跑通（依赖 PowerShell 5.1 的 `render-cdp.ps1`）；macOS/Linux 的 CDP 渲染器在路线图里。
 - 长片模式逐屏写页面很慢：720p 6 分钟片约 8–12 分钟，1080p 约 12–18 分钟。
 - 只带 `edge-tts`；自训练音色（GPT-SoVITS）需要自己配 `VIDEOGEN_VOICE_CONFIG` / `VIDEOGEN_GSV_START`。
-- 内置 26 条示例风格，其余风格库需自行导入（见 NOTICE）。
 
 ### 路线图
 
-- [ ] 用 Node 重写 CDP/ffmpeg 编排，去掉对 PowerShell 与「系统 Python」的硬依赖
+- [x] 用 Node 重写 CDP/ffmpeg 编排，去掉对 PowerShell 与「系统 Python」的硬依赖（0.2.0）
+- [x] 风格库全量随包分发（0.3.0）
 - [ ] 分镜页面的并行生成（现在是串行）
 - [ ] 片头/片尾模板、转场、字幕轨
 - [ ] 一键把成片推到 QQ / 微信（配对 dsh 消息插件）

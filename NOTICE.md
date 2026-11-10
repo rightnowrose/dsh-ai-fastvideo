@@ -1,45 +1,26 @@
-# NOTICE · 第三方内容与来源
+# NOTICE
 
-本仓库代码为 MIT。仓库里还打包了一份**示例风格库**（`assets/styles`，26 条 Markdown + 同名缩略图），
-它们不是本项目的原创代码，来源与使用约定如下。
+本仓库代码为 MIT（见 `LICENSE`）。此外随包分发了 **341 条风格提示词**（`assets/styles/`），来源与许可见
+**[assets/styles/SOURCES.md](assets/styles/SOURCES.md)**，第三方许可全文在 **[assets/licenses/](assets/licenses/)**。
 
-## 示例风格库（`assets/styles/`）
+## 随包的风格库
 
-来源：作者本地的「代码动画 / 风格提示词」合集，按其 `许可与来源.md` 的原话：
+| 目录 | 数量 | 来源 | 许可 |
+|---|---|---|---|
+| `A-G_代码样片/`、`R_照参考学来的/`、`M_动态风格/`、`K_卡通画风/`、`Z_中国风/`、`H_现成版式/`、`O_奥斯卡98部/` | 236 | 「代码动画」作者整理（含中文改写与参考实现） | 作者约定：免费使用、转发也请免费分享，禁止包装成课程 / 付费 skills / 收费产品出售 |
+| `L_Lemo-Opuscar/` | 59 | [lemomo-ai/lemo-opuscar](https://github.com/lemomo-ai/lemo-opuscar) | MIT，Copyright (c) 2026 LemoLab |
+| `V_mg-styles-15/` | 15 | mg-styles-15（Vincentwei1021） | MIT，Copyright (c) 2026 Vincentwei1021 |
+| `X_code-video/` | 31 | code-video（Bae-ChangHyun） | MIT，Copyright (c) 2026 Bae-ChangHyun |
 
-> 免费使用，转发也请免费分享；禁止包装成课程、付费 skills 或其他收费产品出售。
+二次分发请保留：本文件、`assets/styles/SOURCES.md`、`assets/licenses/`，以及每条风格 `.md` 里的原始署名行。
 
-原始合集中还包含来自下列项目的风格与实现思路：
+## 不随包的东西
 
-| 上游 | 用途 |
-|---|---|
-| code-video | 代码驱动动画的风格与参考实现（MIT 系，许可原文见其仓库） |
-| Lemo-Opuscar | 「不用视频模型、纯代码出片」的工程做法（MIT） |
-| mg-styles-15 | 动效风格参考（MIT 系） |
+- 表情包（如 maid 系列 GIF）：只在运行时从 `stickersDir` 读取，不在仓库里；
+- BGM 音频：运行时从 `bgm.file` 读取；
+- 自训练音色（GPT-SoVITS 权重与参考音频）：不随包；
+- 任何 API key：写在用户自己的 `<dataDir>/config.json` 里。
 
-**如果你要二次分发本仓库**：请保留本文件与上述署名；不要把这些风格单独抽出来做成付费课程 / 付费技能包。
-若你不确定上游授权是否覆盖你的场景，把 `assets/styles` 换成你自己的风格库即可 ——
-引擎只要求「一条 Markdown + 可选同名 jpg」，格式见 README「加自己的风格」。
+## 运行时依赖（由用户自备，不随包）
 
-## 运行时依赖
-
-| 组件 | 许可 | 说明 |
-|---|---|---|
-| ffmpeg | LGPL/GPL（取决于编译选项） | 通过命令行调用，不随仓库分发 |
-| Edge / Chrome | 微软 / 谷歌的浏览器许可 | 仅用于无头截图（CDP），不随仓库分发 |
-| edge-tts（Python 包） | GPL-3.0 | 用户在本地 `pip install`，不随仓库分发 |
-| DSH（DeepSeek Harness） | 见其官方仓库 | 宿主 |
-
-## 不随仓库分发的东西
-
-下面这些是作者本机的素材，放在 `config.json` 里由使用者自备，**没有**打进本仓库：
-
-- 表情包（322 张 GIF）
-- BGM 音频
-- 自训练音色（GPT-SoVITS 参考音频）
-- 任何大模型 API key
-
-## 生成内容的标识
-
-按《人工智能生成合成内容标识办法》（2025-09-01 施行），本引擎默认在画面右下角打
-`AI 生成 · <footer>` 水印；`Spec.footer` 可改文案，但请保留「AI 生成」这一显式标识。
+ffmpeg / ffprobe（7+）、Edge 或 Chrome、Python 3.10+、`edge-tts`、一个 OpenAI 兼容大模型 key。

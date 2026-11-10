@@ -15,7 +15,7 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent           # .../engine/python/videogen
 ENGINE_DIR = APP_DIR.parent                          # .../engine/python
-PACKAGE_DIR = APP_DIR.parents[2]                     # .../dsh-ai-video
+PACKAGE_DIR = APP_DIR.parents[2]                     # .../dsh-ai-fastvideo
 
 
 def _env_opt(name: str) -> Path | None:
@@ -53,7 +53,7 @@ def _which(command: str, *extras: str) -> Path:
 
 
 ROOT = _env_opt("VIDEOGEN_WORKSPACE") or Path.cwd()  # 工作区根目录（只用于抓上下文，可为空）
-_SHARED = _env_opt("VIDEOGEN_DATA_ROOT") or (Path.home() / ".dsh" / "data" / "dsh-ai-video")
+_SHARED = _env_opt("VIDEOGEN_DATA_ROOT") or (Path.home() / ".dsh" / "data" / "dsh-ai-fastvideo")
 
 FFMPEG = _env_opt("VIDEOGEN_FFMPEG") or _which(
     "ffmpeg", "C:/ffmpeg/bin/ffmpeg.exe", "D:/ffmpeg/bin/ffmpeg.exe",

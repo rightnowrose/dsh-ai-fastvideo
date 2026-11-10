@@ -8,7 +8,7 @@
  * every color is a `--dsw-alias-*` token.
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-ai-video',
+  id: 'dsh-ai-fastvideo',
   factory(require) {
     const React = require('react');
     const h = React.createElement;

@@ -1,4 +1,4 @@
-# 发布与分发（AI 速成视频 / dsh-ai-video）
+# 发布与分发（AI 速成视频 / dsh-ai-fastvideo）
 
 本文只讲「怎么把它装到别人的 DSH 里」，分四种形态，从轻到重：
 
@@ -6,7 +6,7 @@
 |---|---|---|---|
 | A. 本地目录 `install_bundle` | 自己开发、内网机器 | `plugin_manager install_bundle target=<目录>` | 否 |
 | B. GitHub 仓库 + 本地 clone | 少量朋友、公司内共享 | `git clone` 后同 A | 否 |
-| C. npm 包 | 公开分发（推荐） | `dsh plugin --profile web add dsh-ai-video` | 需再做 D 才会被市场发现 |
+| C. npm 包 | 公开分发（推荐） | `dsh plugin --profile web add dsh-ai-fastvideo` | 需再做 D 才会被市场发现 |
 | D. 进社区市场目录 | 想让所有人 `Discover` 到 | 给 `awesome-dsh-plugin` 提 PR | 是 |
 
 ## 0. 命名约定（`dsh-plugins-` 是不是标准？）
@@ -17,12 +17,12 @@
 - 带 scope 的是 `@scope/dsh-xxx`（`@smalltailqwq/dsh-client-ui-skin-maid-atelier`）。
 - `dsh-plugins-xxx` 只是某个作者的私有前缀（市场里 5126 条中只有 5 条），并非约定。
 
-所以本包用 `dsh-ai-video` 是合规的，而且这个 npm 名字**当前未被占用**。
+所以本包用 `dsh-ai-fastvideo` 是合规的，而且这个 npm 名字**当前未被占用**。
 
 ## 1. 发 npm 包（形态 C）
 
 ```powershell
-cd F:\path\to\dsh-ai-video
+cd F:\path\to\dsh-ai-fastvideo
 npm login                      # 第一次
 npm pack --dry-run             # 看会打包哪些文件（必须是 files[] 里列的）
 npm publish --access public    # 公开包
@@ -31,13 +31,13 @@ npm publish --access public    # 公开包
 发完别人就能：
 
 ```powershell
-dsh plugin --profile web add dsh-ai-video
+dsh plugin --profile web add dsh-ai-fastvideo
 ```
 
-装完在 DSH 里会看到 profile 的 `node_modules/dsh-ai-video`（`package.json.source` 显示 `dsh-ai-video@0.2.0`），
+装完在 DSH 里会看到 profile 的 `node_modules/dsh-ai-fastvideo`（`package.json.source` 显示 `dsh-ai-fastvideo@0.2.0`），
 与 `dsh plugin --profile web add dsh-context` 完全同款。
 
-**版本号**：改 `package.json` 的 `version` 后重新 `npm publish`；用户跑 `dsh plugin --profile web add dsh-ai-video@latest` 或 `npm update` 升级。
+**版本号**：改 `package.json` 的 `version` 后重新 `npm publish`；用户跑 `dsh plugin --profile web add dsh-ai-fastvideo@latest` 或 `npm update` 升级。
 
 ## 2. 进社区市场（形态 D）
 
@@ -61,8 +61,8 @@ dsh plugin --profile web add dsh-ai-video
 只有一件必做的事：填一个 OpenAI 兼容的模型 key（用于「按风格提示词写页面」和「AI 自拟分镜」）。
 
 ```jsonc
-// Windows: %USERPROFILE%\.dsh\data\dsh-ai-video\config.json
-// macOS/Linux: ~/.dsh/data/dsh-ai-video/config.json
+// Windows: %USERPROFILE%\.dsh\data\dsh-ai-fastvideo\config.json
+// macOS/Linux: ~/.dsh/data/dsh-ai-fastvideo/config.json
 {
   "llm": { "baseUrl": "https://api.deepseek.com/v1", "model": "deepseek-chat", "apiKey": "sk-..." }
 }

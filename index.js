@@ -1,5 +1,5 @@
 /**
- * Host half of AI速成视频 (dsh-ai-video): routes under `ai-video/` that the browser
+ * Host half of AI速成视频 (dsh-ai-fastvideo): routes under `ai-video/` that the browser
  * panel uses to read the style library, start a render, follow its progress and
  * play the result.
  *
@@ -26,7 +26,7 @@ import { randomUUID } from 'node:crypto';
 import { zstdDecompressSync } from 'node:zlib';
 
 // ---------------------------------------------------------------- layout
-// 包内 = 只读（引擎、内置风格、模板）；用户数据 = <dataDir>，默认 ~/.dsh/data/dsh-ai-video。
+// 包内 = 只读（引擎、内置风格、模板）；用户数据 = <dataDir>，默认 ~/.dsh/data/dsh-ai-fastvideo。
 const PLUGIN_DIR = dirname(fileURLToPath(import.meta.url));
 const ENGINE_DIR = join(PLUGIN_DIR, 'engine', 'python');
 const BUILTIN_STYLE_DIR = join(PLUGIN_DIR, 'assets', 'styles');
@@ -131,7 +131,7 @@ function detectPowershell() {
 // ---------------------------------------------------------------- config
 const DATA_DIR = resolve(
   envFirst('DSH_AI_VIDEO_DATA', 'VIDEOGEN_DATA_ROOT') ||
-    join(homedir(), '.dsh', 'data', 'dsh-ai-video'),
+    join(homedir(), '.dsh', 'data', 'dsh-ai-fastvideo'),
 );
 const CONFIG_PATH = join(DATA_DIR, 'config.json');
 
@@ -142,7 +142,7 @@ function loadConfig() {
     const parsed = raw ? JSON.parse(raw) : {};
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch (error) {
-    console.warn(`[dsh-ai-video] 配置文件读不了，按默认值启动：${CONFIG_PATH} (${error && error.message})`);
+    console.warn(`[dsh-ai-fastvideo] 配置文件读不了，按默认值启动：${CONFIG_PATH} (${error && error.message})`);
     return {};
   }
 }
@@ -1179,7 +1179,7 @@ function register(ctx) {
   });
 }
 
-export const name = 'dsh-ai-video';
+export const name = 'dsh-ai-fastvideo';
 export const inject = ['webServer', 'connection'];
 
 export function apply(ctx) {
