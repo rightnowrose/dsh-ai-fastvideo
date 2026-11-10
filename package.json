@@ -1,6 +1,6 @@
 {
   "name": "dsh-ai-fastvideo",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "AI 速成视频 — 341 条风格提示词一句话出片：按风格现写 Canvas 页面、逐帧渲染、配音配乐音效；也能只给一句话让 AI 自己拆分镜出长片。",
   "type": "module",
   "main": "index.js",

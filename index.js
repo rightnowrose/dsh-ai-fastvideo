@@ -675,7 +675,7 @@ function startJob(job, payload) {
         const child = spawn(PYTHON, [BUILD_JOB, file], {
           cwd: APPS,
           windowsHide: true,
-          env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
+          env: { ...childEnv(), PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
         });
         job.child = child;
         let buffer = '';

@@ -2,6 +2,14 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号用语义化。
 
+## [0.3.1] - 2026-11-11
+
+### 修复
+
+- **出片子进程没继承插件环境变量**：`startJob` 起 Python 时只传了 `process.env`，导致 `config.json` 里的
+  `llm` / `ffmpeg` / 数据目录 / `renderer` 等设置对渲染任务不生效（表现为「明明填了 API key，出片却报没有 key」）。
+  改为统一走 `childEnv()`。
+
 ## [0.3.0] - 2026-11-11
 
 ### 变更
