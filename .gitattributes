@@ -1,0 +1,15 @@
+# 统一换行：仓库里存 LF，检出时不转换（避免每次提交都报 CRLF 警告）
+* text=auto eol=lf
+
+# 二进制资源别让 git 当文本处理
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.mp4 binary
+*.mp3 binary
+*.wav binary
+*.zstd binary
+
+# 风格提示词是纯文本，但要保持原样（别自动折行/转换）
+assets/styles/**/*.md text eol=lf
