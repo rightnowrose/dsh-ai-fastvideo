@@ -21,6 +21,7 @@
 
 完整许可原文在 `assets/licenses/`：
 
+- `code-donghua_许可与来源.txt`（整理者给出的约定，逐字抄本）
 - `Lemo-Opuscar_LICENSE.txt`
 - `mg-styles-15_LICENSE.txt`
 - `code-video_LICENSE.txt`

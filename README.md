@@ -74,7 +74,8 @@ dsh plugin --profile web add dsh-ai-fastvideo
 | `X_code-video/` | 31 | code-video（Bae-ChangHyun） | MIT |
 
 逐类来源、哔哩哔哩 俯仰观照 的约定原文、第三方许可全文见 **[assets/styles/SOURCES.md](assets/styles/SOURCES.md)** 与
-**[assets/licenses/](assets/licenses/)**。哔哩哔哩 俯仰观照 约定：免费使用、转发也请免费分享，**禁止包装成课程 / 付费 skills 出售**。
+**[assets/licenses/](assets/licenses/)**（整理者约定原文抄本：`code-donghua_许可与来源.txt`）。
+哔哩哔哩 俯仰观照 约定：免费使用、转发也请免费分享，**禁止包装成课程 / 付费 skills 出售**。
 
 加自己的风格：往 `assets/styles/<分类>/` 放 `.md`（同名 `.jpg` 可选），60 秒内或点一次「刷新」生效；
 批量导入见 `scripts/import_styles.py`。

@@ -12,7 +12,8 @@
 | `V_mg-styles-15/` | 15 | mg-styles-15（Vincentwei1021） | MIT，Copyright (c) 2026 Vincentwei1021 |
 | `X_code-video/` | 31 | code-video（Bae-ChangHyun） | MIT，Copyright (c) 2026 Bae-ChangHyun |
 
-二次分发请保留：本文件、`assets/styles/SOURCES.md`、`assets/licenses/`，以及每条风格 `.md` 里的原始署名行。
+二次分发请保留：本文件、`assets/styles/SOURCES.md`、`assets/licenses/`（其中
+`code-donghua_许可与来源.txt` 是整理者约定原文的逐字抄本），以及每条风格 `.md` 里的原始署名行。
 
 ## 不随包的东西
 
