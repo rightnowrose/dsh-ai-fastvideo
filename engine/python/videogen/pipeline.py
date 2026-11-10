@@ -16,7 +16,7 @@ import uuid
 from pathlib import Path
 
 from . import audio, render, sfx
-from .paths import DATA_DIR, WORK_DIR, ensure_dirs
+from .paths import OUT_DIR, WORK_DIR, ensure_dirs
 from .spec import Spec
 from .styles import resolve
 
@@ -46,7 +46,7 @@ def build(
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
     slug = f"{spec.style}-{stamp}-{uuid.uuid4().hex[:4]}"
-    out = Path(out_path) if out_path else (DATA_DIR / stamp[:8] / f"{slug}.mp4")
+    out = Path(out_path) if out_path else (OUT_DIR / stamp[:8] / f"{slug}.mp4")
     out.parent.mkdir(parents=True, exist_ok=True)
     work = Path(workdir) if workdir else (WORK_DIR / slug)
     work.mkdir(parents=True, exist_ok=True)

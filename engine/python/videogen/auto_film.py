@@ -765,7 +765,7 @@ def _default_out(title: str) -> Path:
     day = time.strftime("%Y%m%d")
     stamp = time.strftime("%H%M%S")
     slug = re.sub(r"[^\w\u4e00-\u9fff]+", "-", title)[:24].strip("-") or "auto"
-    return paths.DATA_DIR / day / f"auto-{slug}-{stamp}-{random.randint(1000, 9999)}.mp4"
+    return paths.OUT_DIR / day / f"auto-{slug}-{stamp}-{random.randint(1000, 9999)}.mp4"
 
 
 # ---------------------------------------------------------------- CLI

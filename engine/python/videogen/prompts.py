@@ -22,7 +22,7 @@ import urllib.request
 from pathlib import Path
 
 from . import audio
-from .paths import DATA_DIR, POWERSHELL, RENDER_PS1, ROOT, STYLE_ROOT as _STYLE_ROOT, WORK_DIR
+from .paths import DATA_DIR, OUT_DIR, POWERSHELL, RENDER_PS1, ROOT, STYLE_ROOT as _STYLE_ROOT, WORK_DIR
 from .spec import Line, Spec
 
 STYLE_ROOT = Path(_STYLE_ROOT) if _STYLE_ROOT else (ROOT / "代码动画" / "风格提示词")
@@ -383,7 +383,7 @@ def build(
         except Exception as exc:  # noqa: BLE001
             raise RuntimeError(f"渲染画面失败：{exc}（canvas 模式也失败：{canvas_exc}）") from exc
 
-    out = Path(out_path) if out_path else (DATA_DIR / time.strftime("%Y%m%d") / f"{slug}.mp4")
+    out = Path(out_path) if out_path else (OUT_DIR / time.strftime("%Y%m%d") / f"{slug}.mp4")
     out.parent.mkdir(parents=True, exist_ok=True)
 
     spec = Spec(

@@ -94,6 +94,9 @@ NODE_RENDER = APP_DIR.parents[1] / "node" / "render.mjs"
 RENDERER = _str_env("VIDEOGEN_RENDERER") or "auto"
 
 DATA_DIR = _env_opt("VIDEOGEN_DATA") or (_SHARED / "out")
+# 成片落盘目录。插件会把 VIDEOGEN_DATA 直接指到 <数据目录>/out，此时 OUT_DIR 就等于它；
+# 单独用 CLI 时默认是 <共享目录>/out。
+OUT_DIR = _env_opt("VIDEOGEN_OUT") or DATA_DIR
 DB_PATH = _env_opt("VIDEOGEN_DB") or (_SHARED / "jobs.db")
 WORK_DIR = _env_opt("VIDEOGEN_WORK") or (_SHARED / "work")
 DEFAULT_BGM = _str_env("VIDEOGEN_BGM")
@@ -101,7 +104,7 @@ STYLE_ROOT = _str_env("VIDEOGEN_STYLE_ROOT")
 
 
 def ensure_dirs() -> None:
-    for path in (DATA_DIR, WORK_DIR):
+    for path in (DATA_DIR, OUT_DIR, WORK_DIR):
         path.mkdir(parents=True, exist_ok=True)
 
 
