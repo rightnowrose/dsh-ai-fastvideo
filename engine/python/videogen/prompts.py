@@ -25,7 +25,7 @@ from . import audio
 from .paths import DATA_DIR, POWERSHELL, RENDER_PS1, ROOT, STYLE_ROOT as _STYLE_ROOT, WORK_DIR
 from .spec import Line, Spec
 
-STYLE_ROOT = _STYLE_ROOT or (ROOT / "代码动画" / "风格提示词")
+STYLE_ROOT = Path(_STYLE_ROOT) if _STYLE_ROOT else (ROOT / "代码动画" / "风格提示词")
 CACHE_DIR = WORK_DIR / "prompt_pages"
 LLM_TIMEOUT = 300
 
@@ -274,54 +274,23 @@ def render_external(html: Path, out_mp4: Path, width: int, height: int, fps: int
 
     mode="screenshot"：逐帧截浏览器画面，兼容任何页面，但慢且可能卡在合成器；
     mode="canvas" + fmt="jpeg"：直接读页面 #cv 的 toDataURL，快一个数量级（LLM 写的页面用这个）。
+    渲染后端（node / powershell）由 videogen.paths.renderer_kind() 决定。
     """
-    cmd = [
-        str(POWERSHELL), "-NoProfile", "-ExecutionPolicy", "Bypass",
-        "-File", str(RENDER_PS1),
-        "-Html", str(html),
-        "-Out", str(out_mp4),
-        "-Width", str(width),
-        "-Height", str(height),
-        "-Fps", str(fps),
-        "-Duration", f"{duration:.3f}",
-        "-Mode", mode,
-        "-Timeout", str(max(60, int(timeout))),
-    ]
-    if fmt:
-        cmd += ["-Format", fmt]
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True, encoding="utf-8", errors="replace",
-        bufsize=1,
+    from . import render as render_mod
+
+    chosen = fmt or ("jpeg" if mode == "canvas" else "png")
+    return render_mod.render_page(
+        Path(html),
+        Path(out_mp4),
+        width=width,
+        height=height,
+        fps=fps,
+        duration=duration,
+        mode=mode,
+        fmt=chosen,
+        timeout=timeout,
+        progress=progress,
     )
-    tail: list[str] = []
-    start = time.time()
-    try:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if time.time() - start > timeout + 60:
-                proc.kill()
-                raise RuntimeError(f"渲染超过 {timeout} 秒仍没结束，已终止（最后输出：{tail[-1] if tail else '无'}）")
-            line = (line or "").rstrip()
-            if not line:
-                continue
-            tail.append(line)
-            if len(tail) > 40:
-                tail.pop(0)
-            m = re.search(r"frame\s+(\d+)/(\d+)", line)
-            if m and progress:
-                try:
-                    progress(int(m.group(1)), int(m.group(2)))
-                except Exception:  # noqa: BLE001
-                    pass
-        code = proc.wait(timeout=timeout)
-    finally:
-        if proc.poll() is None:
-            proc.kill()
-    if code != 0 or not Path(out_mp4).exists() or Path(out_mp4).stat().st_size < 1024:
-        raise RuntimeError("渲染失败：\n" + "\n".join(tail[-12:]))
-    return Path(out_mp4)
 
 
 # ---------------------------------------------------------------- build

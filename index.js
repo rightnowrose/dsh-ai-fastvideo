@@ -171,6 +171,8 @@ const PYTHON = CONFIG.python || detectPython();
 const ENGINE_PKG = join(ENGINE_DIR, 'videogen');
 const BUILD_JOB = join(ENGINE_PKG, 'tools', 'build_job.py');
 const DUMP_CATALOG = join(ENGINE_PKG, 'tools', 'dump_catalog.py');
+/** 跨平台渲染器（Node + CDP），与 python 引擎同打包（在 engine/node 下）。 */
+const NODE_RENDER = join(PLUGIN_DIR, 'engine', 'node', 'render.mjs');
 const FFMPEG = CONFIG.ffmpeg || detectFfmpeg('ffmpeg');
 const FFPROBE = CONFIG.ffprobe || detectFfmpeg('ffprobe');
 const BROWSER = CONFIG.browser || detectBrowser();
@@ -201,6 +203,9 @@ function childEnv() {
     VIDEOGEN_LLM_BASE: llm.baseUrl || envFirst('DSH_AI_VIDEO_LLM_BASE', 'VIDEOGEN_LLM_BASE'),
     VIDEOGEN_LLM_KEY: llm.apiKey || envFirst('DSH_AI_VIDEO_LLM_KEY', 'VIDEOGEN_LLM_KEY'),
     VIDEOGEN_LLM_MODEL: llm.model || envFirst('DSH_AI_VIDEO_LLM_MODEL', 'VIDEOGEN_LLM_MODEL'),
+    // 渲染后端：默认用宿主自带的 node 跑 engine/node/render.mjs（三平台通用）；没有就退回 powershell。
+    VIDEOGEN_NODE: CONFIG.node || process.env.DSH_AI_VIDEO_NODE || process.execPath,
+    VIDEOGEN_RENDERER: CONFIG.renderer || envFirst('DSH_AI_VIDEO_RENDERER', 'VIDEOGEN_RENDERER') || 'auto',
     // 发布版不带 GPT-SoVITS；需要自训练音色时再显式打开。
     VIDEOGEN_ALLOW_GSV: process.env.VIDEOGEN_ALLOW_GSV || '0',
   };
@@ -1162,6 +1167,9 @@ function register(ctx) {
       browser: BROWSER,
       browserOk: Boolean(BROWSER),
       powershell: POWERSHELL,
+    renderer: NODE_RENDER && existsSync(NODE_RENDER) && process.execPath ? 'node' : 'powershell',
+    node: process.execPath,
+    nodeRenderer: NODE_RENDER,
       llmReady: Boolean((llm.baseUrl || process.env.VIDEOGEN_LLM_BASE) && (llm.apiKey || process.env.VIDEOGEN_LLM_KEY)),
       stickersDir: STICKER_DIR,
       bgm: BGM_FILE,

@@ -1,14 +1,31 @@
-"""渲染：把 spec 变成一个单文件 HTML，再交给 Edge/CDP 逐帧截图 + 编码。"""
+"""渲染：把 spec 变成一个单文件 HTML，再交给浏览器（CDP）逐帧截图 + ffmpeg 编码。
+
+两种渲染后端，参数与输出格式完全一致：
+- node      ：engine/node/render.mjs，Windows / macOS / Linux 通用（首选）
+- powershell：tools/render-cdp.ps1，Windows 兜底（没有 node 的机器）
+
+用哪个由 paths.renderer_kind() 决定，可用环境变量 VIDEOGEN_RENDERER=node|powershell 强制。
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import time
 from pathlib import Path
 
-from .paths import POWERSHELL, RENDER_PS1, TEMPLATES
+from .paths import (
+    EDGE,
+    FFMPEG,
+    NODE_BIN,
+    NODE_RENDER,
+    POWERSHELL,
+    RENDER_PS1,
+    TEMPLATES,
+    renderer_kind,
+)
 from .spec import Spec
 from .styles import STYLES
 from . import stickers
@@ -53,44 +70,90 @@ def build_page(spec: Spec, out_html: Path) -> Path:
     return out_html
 
 
-def render(
-    spec: Spec,
-    out_mp4: Path,
-    workdir: Path,
-    progress=None,
-    timeout: int = 900,
-) -> Path:
-    """渲染无声 mp4。progress(done_frames, total_frames) 可选。"""
-    workdir.mkdir(parents=True, exist_ok=True)
-    page = build_page(spec, workdir / "index.html")
-    out_mp4 = Path(out_mp4)
-    out_mp4.parent.mkdir(parents=True, exist_ok=True)
-
-    # explain 每帧都有渐变/半透明叠加，PNG 压帧要 200ms+；JPEG 快一个数量级（q=0.93 在暗底上看不出差）
-    fmt = "jpeg" if spec.style == "explain" else "png"
-    cmd = [
+def render_command(kind: str, page: Path, out_mp4: Path, *, width: int, height: int, fps: int,
+                   duration: float, mode: str, fmt: str, timeout: int) -> list[str]:
+    """按后端拼命令行。两边参数名一致、stdout 都打 `frame N/M`。"""
+    if kind == "node":
+        return [
+            str(NODE_BIN),
+            str(NODE_RENDER),
+            "--html", str(page),
+            "--out", str(out_mp4),
+            "--width", str(width),
+            "--height", str(height),
+            "--fps", str(fps),
+            "--duration", f"{duration:.3f}",
+            "--mode", mode,
+            "--format", fmt,
+            "--timeout", str(max(60, int(timeout))),
+        ]
+    return [
         str(POWERSHELL), "-NoProfile", "-ExecutionPolicy", "Bypass",
         "-File", str(RENDER_PS1),
         "-Html", str(page),
         "-Out", str(out_mp4),
-        "-Width", str(spec.width),
-        "-Height", str(spec.height),
-        "-Fps", str(spec.fps),
-        "-Duration", f"{spec.duration:.3f}",
-        "-Mode", "canvas",
+        "-Width", str(width),
+        "-Height", str(height),
+        "-Fps", str(fps),
+        "-Duration", f"{duration:.3f}",
+        "-Mode", mode,
         "-Format", fmt,
+        "-Timeout", str(max(60, int(timeout))),
     ]
-    t0 = time.time()
+
+
+def render_page(
+    page: Path,
+    out_mp4: Path,
+    *,
+    width: int,
+    height: int,
+    fps: int,
+    duration: float,
+    mode: str = "canvas",
+    fmt: str = "jpeg",
+    timeout: int = 900,
+    progress=None,
+) -> Path:
+    """把任意「遵守页面契约」的 HTML 渲成无声 mp4。progress(done, total) 可选。"""
+    page = Path(page)
+    if not page.exists():
+        raise RenderError(f"页面不存在：{page}")
+    out_mp4 = Path(out_mp4)
+    out_mp4.parent.mkdir(parents=True, exist_ok=True)
+    kind = renderer_kind()
+    try:
+        cmd = render_command(
+            kind, page, out_mp4,
+            width=width, height=height, fps=fps,
+            duration=duration, mode=mode, fmt=fmt, timeout=timeout,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise RenderError(f"渲染器不可用（{kind}）：{exc}") from exc
+
+    env = dict(os.environ)
+    if kind == "node":
+        env.setdefault("VIDEOGEN_EDGE", str(EDGE))
+        env.setdefault("VIDEOGEN_FFMPEG", str(FFMPEG))
+
+    start = time.time()
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", errors="replace",
         bufsize=1,
+        env=env,
     )
     tail: list[str] = []
+    code = 0
     try:
         for line in proc.stdout:  # type: ignore[union-attr]
+            if time.time() - start > timeout + 60:
+                proc.kill()
+                raise RenderError(
+                    f"渲染超过 {timeout} 秒仍没结束，已终止（最后输出：{tail[-1] if tail else '无'}）"
+                )
             line = (line or "").rstrip()
             if not line:
                 continue
@@ -112,11 +175,36 @@ def render(
             proc.kill()
 
     if code != 0 or not out_mp4.exists():
-        raise RenderError("渲染失败：\n" + "\n".join(tail[-15:]))
+        raise RenderError(f"渲染失败（{kind}）：\n" + "\n".join(tail[-15:]))
     if out_mp4.stat().st_size < 1024:
         raise RenderError("渲染产物是空文件")
-    _ = time.time() - t0
     return out_mp4
+
+
+def render(
+    spec: Spec,
+    out_mp4: Path,
+    workdir: Path,
+    progress=None,
+    timeout: int = 900,
+) -> Path:
+    """渲染无声 mp4。progress(done_frames, total_frames) 可选。"""
+    workdir.mkdir(parents=True, exist_ok=True)
+    page = build_page(spec, workdir / "index.html")
+    # explain 每帧都有渐变/半透明叠加，PNG 压帧要 200ms+；JPEG 快一个数量级（q=0.93 在暗底上看不出差）
+    fmt = "jpeg" if spec.style == "explain" else "png"
+    return render_page(
+        page,
+        out_mp4,
+        width=spec.width,
+        height=spec.height,
+        fps=spec.fps,
+        duration=spec.duration,
+        mode="canvas",
+        fmt=fmt,
+        timeout=timeout,
+        progress=progress,
+    )
 
 
 def preview_page(spec: Spec, workdir: Path, at: float | None = None) -> str:

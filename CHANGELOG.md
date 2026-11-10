@@ -2,6 +2,29 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号用语义化。
 
+## [0.2.0] - 2026-11-11
+
+### 新增
+
+- **跨平台渲染器** `engine/node/render.mjs`：用 Node 内置 `WebSocket` 直连 CDP，零依赖，Windows / macOS / Linux 同一份代码。
+  - `--mode canvas|screenshot`、`--format jpeg|png`、`--crf/--preset/--quality`、就绪轮询、CDP 读超时、单次渲染总超时
+  - 1080p 实测 ≈ 70ms/帧（PowerShell 版 ≈ 110ms/帧），且不再踩 `Page.captureScreenshot` 卡死
+- `config.json` 新增 `"renderer": "auto" | "node" | "powershell"`；`paths.renderer_kind()` 自动选择（node 优先，无 node 退回 ps1）。
+- `/ai-video/health` 增加 `renderer` / `node` / `nodeRenderer`，面板「环境」里能直接看到用的是哪个渲染器。
+- `docs/publishing.md`：npm publish、社区目录（awesome-dsh-plugin）PR、`dsh-plugins-` 命名澄清、发布前自检清单。
+- `package.json` 补 `engines.dsh` 与 `dsh.compatibility.dshReleases`，与 `dsh-context` 同款写法。
+
+### 变更
+
+- Python 引擎不再直接拼 PowerShell 命令：`prompts.render_external()` / `render.render()` 统一走 `render.render_page()`，
+  由 `renderer_kind()` 决定起 node 还是 ps1。
+- PowerShell 从「必须」降级为「可选兜底」。
+
+### 修复
+
+- `prompts.STYLE_ROOT` 在环境变量给出字符串时丢失 `Path` 类型，导致 `AttributeError: 'str' object has no attribute 'exists'`。
+- `paths.NODE_RENDER` 指向了 `engine/python/node/`，实际在 `engine/node/`。
+
 ## [0.1.0] - 2026-11-11
 
 第一个可发布版本（从本机自用的 `dsh-videogen-console` 整理而来）。

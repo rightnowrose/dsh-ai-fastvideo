@@ -27,14 +27,19 @@
 | 依赖 | 用途 | 必须 |
 |---|---|---|
 | DSH（DeepSeek Harness）桌面版 | 宿主 | ✅ |
-| Python 3.10+ | 渲染引擎 | ✅ |
+| Node 20+ | 渲染器 `engine/node/render.mjs`（DSH 自带的 node 就够，不额外装） | ✅ |
+| Python 3.10+ | 渲染引擎（分镜 / 配音 / 混音 / 调渲染器） | ✅ |
 | ffmpeg 7+ / ffprobe | 编码、混音 | ✅ |
-| Edge 或 Chrome | 逐帧截图（CDP） | ✅ |
-| Windows PowerShell 5.1 / pwsh | 跑渲染脚本 `render-cdp.ps1` | ✅（目前 0.1 只在 Windows 上跑通） |
+| Edge 或 Chrome | 逐帧导出（CDP，无头） | ✅ |
 | `pip install edge-tts` | 中文配音 | 建议（不装就出无声片） |
 | OpenAI 兼容大模型 key | 「写页面 / 写分镜」两种模式 | 建议（不填就只能用原生模板 CLI） |
+| Windows PowerShell 5.1 / pwsh | 可选兜底渲染器（老机器没有 node 时用） | ❌ 可选 |
+
+渲染器有两套，默认**优先用 Node**（`engine/node/render.mjs`，只依赖 node 内置的 `WebSocket`/`fetch`，Windows / macOS / Linux 同一份代码），
+没有 node 才退回 `tools/render-cdp.ps1`（PowerShell 版，仅 Windows）。可用 `config.json` 的 `"renderer": "node" | "powershell"` 强制指定。
 
 Python 侧只用一个第三方包（`edge-tts`），其余全是标准库 —— 没有 torch、没有 whisper、不占显存。
+Node 侧零依赖（不 `npm install` 任何东西）。
 
 ```powershell
 # 装依赖（任选一个 Python 3.10+ 解释器）
@@ -59,6 +64,13 @@ cd dsh-ai-video
 ```
 
 > 想手动验证装没装上：`plugin_manager` 里应能看到 `dsh-ai-video`；会话视图页签里 `AI 速成视频` 在后面。
+
+## 发布到 npm / 进插件市场
+
+三种分发形态的区别、`dsh-plugins-` 到底是不是约定、npm publish 与社区目录 PR 的完整步骤，见 **[docs/publishing.md](docs/publishing.md)**。
+一句话版本：`dsh-ai-video` 这个 npm 名字没被占用，`npm publish --access public` 之后别人就能
+`dsh plugin --profile web add dsh-ai-video`（与装 `dsh-context` 完全同款）；要出现在市场的 `Discover` 里，还需要给
+`awesome-dsh-plugin` 目录提一条 PR。
 
 ## 发布到 GitHub
 
@@ -149,8 +161,10 @@ Python 引擎（engine/python/videogen）
 
 关键设计：
 
-- **画面是网页**：一份单文件 HTML + `window.seek(t)` 时间纯函数 → headless Edge 逐帧导出 PNG/JPEG → ffmpeg 编码。
+- **画面是网页**：一份单文件 HTML + `window.seek(t)` 时间纯函数 → headless 浏览器（CDP）逐帧导出 JPEG/PNG → ffmpeg 编码。
   没有视频模型、不占显存，风格完全由「提示词」决定，改风格 = 改文本。
+- **渲染器可换**：默认 `engine/node/render.mjs`（Node 内置 WebSocket 直连 CDP，三平台通用、约 70–110ms/帧）；
+  老机器没有 node 时自动退回 `tools/render-cdp.ps1`（PowerShell 版）。两者命令行参数一致，产物规格一致。
 - **先写页面再截图**：风格库里的每条提示词都可以让 LLM 现写一个 Canvas 页面，
   所以 26 条内置风格只是起点，你可以随时往目录里加自己的。
 - **时间盒（timebox）**：LLM 写的页面常常自带循环或提前播完；渲帧前统一注入一层时间映射，

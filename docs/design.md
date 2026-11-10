@@ -30,7 +30,23 @@ Python 有最好的文本/音频处理库，而且本项目的引擎是纯标准
 | 画面来源 | 包内 `engine/python/videogen/templates/*` | LLM 现写的单文件 Canvas 页面 |
 | 页面生命周期 | 参数化 JSON，稳定 | 缓存到 `work/prompt_pages/`，按 sha1 复用 |
 | 时间控制 | 模板自己按节拍算 | 渲帧前注入 **timebox**（见下） |
-| 速度 | 快（秒级到十几秒） | 慢（每屏十几秒写页面 + 逐帧截图） |
+| 速度 | 快（秒级到十几秒） | 慢（每屏十几秒写页面 + 逐帧渲染） |
+
+## 渲染器（两套，同一套参数）
+
+| 后端 | 文件 | 依赖 | 适用 |
+|---|---|---|---|
+| Node（默认） | `engine/node/render.mjs` | node ≥ 20，内置 `WebSocket` + `fetch` | Win/mac/Linux 通用，约 70ms/帧（1080p） |
+| PowerShell（兜底） | `engine/python/videogen/tools/render-cdp.ps1` | Windows PowerShell 5.1 / pwsh | 老机器没有 node 时 |
+
+两者 CLI 参数一一对应（`-Html/-Out/-Width/-Height/-Fps/-Duration/-Mode/-Format/-Timeout` ↔ `--html/--out/...`），
+由 `videogen/paths.py` 的 `renderer_kind()` 决定（`config.renderer` → 环境变量 `VIDEOGEN_RENDERER` → auto：node 优先），
+Python 侧只调 `render.render_page()`，不再各自拼命令。
+
+Node 后端要点：`--headless=new` 起浏览器 → `/json/version` 拿 `webSocketDebuggerUrl` → 每帧
+`Runtime.evaluate('window.seek(t)')` 后 `canvas.toDataURL()`（canvas 模式）或 `Page.captureScreenshot`（screenshot 模式）→
+ffmpeg 编码；`finally` 里必杀浏览器进程并清临时 profile。canvas 模式只接受页面自带 `#cv`/`<canvas>`，
+否则直接报错提示切 screenshot。
 
 ## 三个容易踩的点
 

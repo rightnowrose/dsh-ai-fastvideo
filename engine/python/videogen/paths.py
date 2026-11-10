@@ -88,6 +88,10 @@ APPS_DIR = _env_opt("VIDEOGEN_APPS") or (ROOT / "apps")
 
 TEMPLATES = APP_DIR / "templates"
 RENDER_PS1 = APP_DIR / "tools" / "render-cdp.ps1"
+# 跨平台渲染器（Node + CDP）；没有 Node 或要强制走 PowerShell 时用 VIDEOGEN_RENDERER 覆盖。
+NODE_BIN = _env_opt("VIDEOGEN_NODE") or _which("node")
+NODE_RENDER = APP_DIR.parents[1] / "node" / "render.mjs"
+RENDERER = _str_env("VIDEOGEN_RENDERER") or "auto"
 
 DATA_DIR = _env_opt("VIDEOGEN_DATA") or (_SHARED / "out")
 DB_PATH = _env_opt("VIDEOGEN_DB") or (_SHARED / "jobs.db")
@@ -108,12 +112,38 @@ def check_env() -> list[str]:
         ("ffmpeg", FFMPEG),
         ("ffprobe", FFPROBE),
         ("浏览器(Edge/Chrome)", EDGE),
-        ("powershell/pwsh", POWERSHELL),
-        ("render-cdp.ps1", RENDER_PS1),
+        ("render(node)", NODE_RENDER),
     ):
         if not str(path) or not Path(path).exists():
             missing.append(f"{label}: {path or '（未找到）'}")
+    if not renderer_available():
+        if not Path(str(POWERSHELL)).exists():
+            missing.append(f"渲染器：既没有可用的 node（{NODE_BIN}），也没有 powershell（{POWERSHELL}）")
     return missing
+
+
+def _node_ready() -> bool:
+    """Node 渲染器可用 = 有 render.mjs + 有一个能跑的 node。"""
+    if not Path(str(NODE_RENDER)).exists():
+        return False
+    binary = str(NODE_BIN or "")
+    if not binary:
+        return False
+    return Path(binary).exists() or bool(shutil.which(binary))
+
+
+def renderer_kind() -> str:
+    """实际会用哪个渲染器：'node'（跨平台）或 'powershell'（Windows 兜底）。"""
+    wanted = (RENDERER or "auto").lower()
+    if wanted in ("powershell", "ps1"):
+        return "powershell"
+    if wanted == "node":
+        return "node"
+    return "node" if _node_ready() else "powershell"
+
+
+def renderer_available() -> bool:
+    return _node_ready() or Path(str(POWERSHELL)).exists()
 
 
 def check_audio_env() -> list[str]:
